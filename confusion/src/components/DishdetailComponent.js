@@ -6,6 +6,9 @@ import {
 } from "reactstrap";
 import { Link } from 'react-router-dom';
 import {Control, Errors, LocalForm} from "react-redux-form";
+import { Loading } from "./LoadingComponent";
+import {baseUrl} from "../shared/baseUrl";
+import { FadeTransform, Fade, Stagger } from 'react-animation-components';
 
 const maxLength = (len) => (val) => !(val) || (val.length <= len)
 const minLength = (len) => (val) => (val) && (val.length >= len)
@@ -28,8 +31,8 @@ class CommentForm extends Component {
     }
 
     handleSubmit(values) {
-        console.log('Current State is: ' + JSON.stringify(values));
-        alert('Current State is: ' + JSON.stringify(values));
+        this.toggleModal();
+        this.props.postComment(this.props.dishId, values.rating, values.author, values.comment)
     }
 
     render() {
@@ -89,38 +92,66 @@ class CommentForm extends Component {
 
 function RenderDish(dish) {
     return (
-        <Card>
-            <CardImg width="100%" src={dish.image} alt={dish.name} />
-            <CardBody>
-                <CardTitle>{dish.name}</CardTitle>
-                <CardText>{dish.description}</CardText>
-            </CardBody>
-        </Card>
+        <FadeTransform in transformProps={{
+            exitTransform: 'scale(0.5) translateY(-50%)'
+        }}>
+            <Card>
+                <CardImg width="100%" src={baseUrl + dish.image} alt={dish.name} />
+                <CardBody>
+                    <CardTitle>{dish.name}</CardTitle>
+                    <CardText>{dish.description}</CardText>
+                </CardBody>
+            </Card>
+        </FadeTransform>
     )
 }
 
-function RenderComments(comments) {
+function RenderComments({comments, postComment, dishId}) {
     const commentsList = comments.map((comment) => {
         const date = new Date(comment.date);
         const stringDate = date.toLocaleString('default', { year: 'numeric', month: 'short', day: 'numeric' })
         return (
-            <li key={comment.id}>
-                <p>{comment.comment}</p>
-                <p>-- {comment.author} , {stringDate}</p>
-            </li>
+            <Fade in>
+                <li key={comment.id}>
+                    <p>{comment.comment}</p>
+                    <p>-- {comment.author} , {stringDate}</p>
+                </li>
+            </Fade>
         )
     })
     return (
         <div>
             <h5><b>Comments</b></h5>
-            <ul className="list-unstyled">{commentsList}</ul>
-            <CommentForm />
+            <ul className="list-unstyled">
+                <Stagger in>
+                    {commentsList}
+                </Stagger>
+            </ul>
+            <CommentForm dishId={dishId} postComment={postComment} />
         </div>
     )
 }
 
 const Dishdetail = (props) => {
-    if (props.dish != null) {
+    if (props.isLoading) {
+        return (
+            <div className='container'>
+                <div className='row'>
+                    <Loading />
+                </div>
+            </div>
+        );
+    }
+    else if (props.errMess) {
+        return (
+            <div className='container'>
+                <div className='row'>
+                    <h4 className='text-danger'>{props.errMess}</h4>
+                </div>
+            </div>
+        );
+    }
+    else if (props.dish != null) {
         return (
             <div className="container">
                 <div className="row">
@@ -138,7 +169,7 @@ const Dishdetail = (props) => {
                         {RenderDish(props.dish)}
                     </div>
                     <div className="col-12 col-md-5 m-1">
-                        {RenderComments(props.comments)}
+                        <RenderComments comments={props.comments} postComment={props.postComment} dishId={props.dish.id} />
                     </div>
                 </div>
             </div>
